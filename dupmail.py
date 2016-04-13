@@ -5,16 +5,10 @@ import email.header
 import email.iterators
 import email.utils
 import hashlib
-import itertools
 import re
 import sys
 import argparse
-
-def print_result(*args, **kwargs):
-    print(*args, **kwargs)
-    
-def print_info(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
+import json
 
 class Email:
     def __init__(self, id, data):
@@ -32,8 +26,12 @@ class Email:
                     count += 1
         return count
     
+    def __repr__(self):
+        return str(self.id)
+    
     def __str__(self):
         return "|" + "|".join([str(self.data[key]) for key in sorted(self.data)]) + "|"
+        
     
     def hash(self):
         return hashlib.sha256(str(self).encode()).hexdigest()
@@ -112,8 +110,7 @@ class EmailParser:
             value, header_encoding = email.header.decode_header(header)[0]
             return self.parse_string(value, header_encoding)
         else:
-            print_info("invalid string type: %s %s"%(header, header.__classs__))
-            return ""
+            raise TypeError("invalid type: %s %s"%(header, header.__classs__))
     
     def parse_string_flat(self, header):
         value = self.parse_string(header)
@@ -139,48 +136,78 @@ class EmailParser:
             if len(l) > 0:
                 yield l
 
+class Progress:
+    def __init__(self, obj, name):
+        self.name = name
+        self.i = 0
+        self.show("counting %s"%(self.name))
+        self.total = len(obj)
+    
+    def show(self, *args, **kwargs):
+        print(*args, file=sys.stderr, **kwargs)
+    
+    def next(self):
+        self.i += 1
+        self.show("processing %d/%d %s"%(self.i, self.total, self.name), end="\r")
+    
+    def end(self):
+        self.show("")
+
 class EmailDups:
-    def __init__(self, path, keys, fail_at):
+    def __init__(self, path, keys, skip_at):
         self.mbox = mailbox.Maildir(path)
         self.keys = keys
-        self.fail_at = fail_at
+        self.skip_at = skip_at
         self.dups = {}
     
     def calculate(self):
         dups = {}
-        print_info("calculating maildir size")
-        total = len(self.mbox)
-        i = 0
+        p = Progress(self.mbox, "emails")
         for id, eml in self.mbox.iteritems():
-            i += 1
-            print_info("processing %d/%d emails"%(i, total), end="\r")
+            p.next()
             emlhash = EmailParser.parse(eml, keys, id)
             fails = emlhash.fails()
-            if fails >= self.fail_at:
-                print_info("skipping email %s with %d fails"%(id, fails))
+            if fails >= self.skip_at:
+                p.show("skipping email %s with %d fails"%(id, fails))
                 continue
             xhash = emlhash.hash()
             if not xhash in dups:
                 dups[xhash] = []
             dups[xhash].append(emlhash)
+        p.end()
         
         for key in list(dups.keys()):
             if len(dups[key]) <= 1:
                 dups.pop(key, None)
         
         self.dups = dups
-        print_info("")
+        
+        p.show("%d dupmails found"%(self.count()))
     
     def count(self):
         count = 0
         for dup in self.dups.values():
             count = count + len(dup)-1
         return count
+    
+    def print_result(self, format):
+        if format == "json":
+            json_obj = []
+            for dup in self.dups.values():
+                json_obj.append([repr(item) for item in dup])
+            print(json.dumps(json_obj))
+        elif format == "plain":
+            for dup in self.dups.values():
+                print(" ".join([repr(item) for item in dup]))
+        else:
+            print("invalid format: %s"%(format))
 
 parser = argparse.ArgumentParser(description="find duplicate emails",
                                  formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("-f", "--fail-at", default=2, type=int,
-                    help="skip emails if unable to parse at least FAIL_AT fields")
+parser.add_argument("-s", "--skip-if", default=2, type=int,
+                    help="skip emails if unable to parse at least SKIP_AT fields")
+parser.add_argument("-f", "--format", default="plain", choices=["plain", "json"],
+                    help="print results using this format")
 parser.add_argument("-k", "--keys", nargs=1, default="from,to,date,subject,body_lines",
                     help="comma separated list of field names used to identify duplicates")
 parser.add_argument("path", help="maildir path")
@@ -194,6 +221,6 @@ for key in keys:
     if key not in EmailParser.valid_keys():
         parser.error("invalid KEY: %s"%(key))
 
-emaildups = EmailDups(args.path, keys, args.fail_at)
+emaildups = EmailDups(args.path, keys, args.skip_if)
 emaildups.calculate()
-print("%d dupmails found"%(emaildups.count()))
+emaildups.print_result(args.format)
