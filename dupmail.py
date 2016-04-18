@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 
-import mailbox
 import email.header
 import email.iterators
 import email.utils
 import hashlib
 import re
 import sys
+import os.path
+import glob
 import argparse
 import json
 
@@ -55,9 +56,9 @@ class EmailParser:
     # Parses an email and returns its metadata representation
     #
     @staticmethod
-    def parse(eml, keys, id):
-        parser = EmailParser(eml, keys)
-        email = Email(id, parser.data())
+    def parse(file, keys):
+        parser = EmailParser(file, keys)
+        email = Email(file, parser.data())
         return email
     
     #
@@ -72,8 +73,9 @@ class EmailParser:
         prefix = cls.key_method_prefix
         return [m[len(prefix):] for m in dir(cls) if m.startswith(prefix)]
     
-    def __init__(self, eml, keys):
-        self._eml = eml
+    def __init__(self, file, keys):
+        with open(file) as fp:
+            self._eml = email.message_from_file(fp)
         self._data = {}
         for key in keys:
             self._data[key] = self.process(key)
@@ -214,23 +216,31 @@ class Progress:
 
 class EmailDups:
     def __init__(self, path, keys, skip_at):
-        self.mbox = mailbox.Maildir(path)
+        self.path = path
         self.keys = keys
         self.skip_at = skip_at
         self.dups = {}
+    
+    #
+    # Iterates recursively over files
+    #
+    def fglob(self):
+        for f in glob.iglob(self.path+"/**", recursive=True):
+            if os.path.isfile(f):
+                yield f
     
     #
     # Main process
     #
     def calculate(self):
         dups = {}
-        p = Progress(self.mbox, "emails")
-        for id, eml in self.mbox.iteritems():
+        p = Progress(list(self.fglob()), "emails")
+        for file in self.fglob():
             p.next()
-            emlhash = EmailParser.parse(eml, keys, id)
+            emlhash = EmailParser.parse(file, keys)
             fails = emlhash.fails()
             if fails >= self.skip_at:
-                p.show("skipping email %s with %d fails"%(id, fails))
+                p.show("skipping %s with %d fails"%(file, fails))
                 continue
             xhash = emlhash.hash()
             if not xhash in dups:
@@ -285,7 +295,7 @@ body_lines: the number of non empty lines in the body, including attachments
 body_size: same as above but total byte size
 body_hash: same as above but sha256 representation
 """)
-parser.add_argument("path", help="maildir path")
+parser.add_argument("path", help="dir with emails")
 args = parser.parse_args()
 
 keys = args.keys.split(",")
