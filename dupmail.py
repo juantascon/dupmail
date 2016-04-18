@@ -119,7 +119,7 @@ class EmailParser:
     
     def process_body_hash(self):
         hashx = hashlib.sha256()
-        [hashx.update(line.encode) for line in self.body()]
+        [hashx.update(line.encode()) for line in self.body()]
         return hashx.hexdigest()
     
     #
