@@ -283,7 +283,7 @@ parser.add_argument("-s", "--skip-if", default=2, type=int,
                     help="skip emails if unable to parse at least SKIP_AT fields")
 parser.add_argument("-f", "--format", default="plain", choices=["plain", "json"],
                     help="print results using this format")
-parser.add_argument("-k", "--keys", nargs=1, default="from,to,date,subject,body_lines",
+parser.add_argument("-k", "--keys", type=str, default="from,to,date,subject,body_lines",
                     help="""
 comma separated list of fields to identify duplicates, valid values are:
 
