@@ -1,6 +1,15 @@
 # dupmail
 
-dupmail is a simple, small, lightweight, tool that finds duplicate emails.
+dupmail is a modern, simple, small, lightweight, tool that finds duplicate emails.
+
+## modern
+
+Over the years I've accumulated tons of emails in English, Spanish and Korean.
+dupmail was built to support internationalized headers such as: =?iso-8859-1?q?p=F6stal?=
+and utf-8 encoded headers such as: pöstal. If your emails are not utf-8 I highly 
+recommend migrating with the any2utf8.sh tool found inside this repo.
+
+dupmail won't be backward compatible with python2.
 
 ## simple
 
