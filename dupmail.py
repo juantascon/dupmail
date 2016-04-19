@@ -277,25 +277,30 @@ class EmailDups:
         else:
             print("invalid format: %s"%(format))
 
-parser = argparse.ArgumentParser(description="find duplicate emails",
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-parser.add_argument("-s", "--skip-if", default=2, type=int,
-                    help="skip emails if unable to parse at least SKIP_AT fields")
-parser.add_argument("-f", "--format", default="plain", choices=["plain", "json"],
-                    help="print results using this format")
-parser.add_argument("-k", "--keys", type=str, default="from,to,date,subject,body_lines",
-                    help="""
-comma separated list of fields to identify duplicates, valid values are:
+description = ("dupmail is a modern, simple, small and lightweight tool "
+                "that finds duplicate emails")
+epilog = """
+keys:
 
-from: email address in From header
-to: ordered email address list including To, CC and BCC headers
-date: Date header formatted as yyyy-mm-dd, time is not included
-subject: lowercase, space removed Subject header
-body_lines: the number of non empty lines in the body, including attachments
-body_size: same as above but total byte size
-body_hash: same as above but sha256 representation
-""")
-parser.add_argument("path", help="dir with emails")
+  from:       email address only taken out of From header
+  to:         ordered email address list including To, CC and BCC headers
+  date:       Date header formatted as yyyy-mm-dd, time is not included
+  subject:    lowercase, space removed Subject header
+  body_lines: the number of non empty lines in the body, including attachments
+  body_size:  total byte size of non empty body lines, including attachments
+  body_hash:  sha256 representation non empty body lines, including attachments
+"""
+parser = argparse.ArgumentParser(description=description, epilog=epilog,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+parser.add_argument("-s", "--skip-if", default=2, type=int,
+                    help=("skip emails if unable to parse at least SKIP_AT fields, "
+                          "default: 2"))
+parser.add_argument("-f", "--format", default="plain", choices=["plain", "json"],
+                    help="print results using this format, default: plain")
+parser.add_argument("-k", "--keys", type=str, default="from,to,date,subject,body_lines",
+                    help=("comma separated list of fields to identify duplicates, "
+                          "default: from,to,date,subject,body_lines"))
+parser.add_argument("path", metavar="PATH", help="dir with emails")
 args = parser.parse_args()
 
 keys = args.keys.split(",")
