@@ -22,7 +22,7 @@ dupmail.py /my/maildir --format plain | while read first rest; do rm -rf ${rest}
 
 ## small
 
-dupmail is a single file (~200 loc) python script so you can grab it run it and delete it once your maildir is clean.
+dupmail is a single file (~300 loc) python script so you can grab it run it and delete it once your maildir is clean.
 
 ## lightweight
 
