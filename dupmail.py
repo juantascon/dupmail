@@ -297,9 +297,9 @@ parser.add_argument("-s", "--skip-if", default=2, type=int,
                           "default: 2"))
 parser.add_argument("-f", "--format", default="plain", choices=["plain", "json"],
                     help="print results using this format, default: plain")
-parser.add_argument("-k", "--keys", type=str, default="from,to,date,subject,body_lines",
+parser.add_argument("-k", "--keys", type=str, default="from,to,date,subject,body_lines,body_hash",
                     help=("comma separated list of fields to identify duplicates, "
-                          "default: from,to,date,subject,body_lines"))
+                          "default: from,to,date,subject,body_lines,body_hash"))
 parser.add_argument("path", metavar="PATH", help="dir with emails")
 args = parser.parse_args()
 
